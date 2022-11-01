@@ -4,7 +4,10 @@ import numpy as np
 
 
 pygame.init()
-
+col_about_to_die = (200, 200, 225)
+col_alive = (255, 255, 215)
+col_background = (10, 10, 40)
+col_grid = (30, 30, 60)
 
 scale = 7
 
@@ -19,8 +22,10 @@ screen = pygame.display.set_mode(
 
 glClearColor(0.0, 1.0, 0.0, 1.0)
 
-cells = np.zeros((dimensiony, dimensionx))
-pattern = np.array([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+
+def init(dimensionx, dimensiony):
+    cells = np.zeros((dimensiony, dimensionx))
+    pattern = np.array([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                     [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0],
                     [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0],
@@ -28,10 +33,13 @@ pattern = np.array([[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0
                     [1,1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                     [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                     [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]);
+                    [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
+
+    return pattern
 
 
-def update(surface, cells, cellsize):
+
+def update(cells):
     nxt = np.zeros((cells.shape[0], cells.shape[1]))
 
     for r, c in np.ndindex(cells.shape):
@@ -44,8 +52,10 @@ def update(surface, cells, cellsize):
             col = col_alive
 
         col = col if cells[r, c] == 1 else col_background
-
+    
+    print(nxt)
     return nxt
+
 
 def pixel(x,y,color):
     glEnable(GL_SCISSOR_TEST)
@@ -61,22 +71,34 @@ while running:
     glClearColor(0.1,0.8,0.2,1.0)
     glClear(GL_COLOR_BUFFER_BIT)
 
+    pattern = init(dimensionx, dimensiony)
+
     # paint
     for y,row in enumerate(pattern):
         for x,cell in enumerate(row):
             if cell == 1:
                 pixel(x, y, (1.0,0.0,0.0))
 
+    cells = update(pattern)
+    print(cells)
 
-    #Update segun el array inicial
+    for y,row in enumerate(cells):
+        for x,cell in enumerate(row):
+            if cell == 1:
+                pixel(x, y, (1.0,0.0,0.0))
     
+    pygame.display.flip()
+
     #Ejecuta y muestra el nuevo array
 
-
-
     # flip
-    pygame.display.flip()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+    
+      #Update segun el array inicial
+    
+    
+
+    
