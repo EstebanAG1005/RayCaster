@@ -1,8 +1,9 @@
 import pygame
+import random
 
 pygame.init()
-
-screen = pygame.display
+screen = pygame.display.set_mode((1000, 500))
+running = True
 
 while running:
 
