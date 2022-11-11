@@ -20,12 +20,14 @@ vertex_shader = """
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 vertexColor;
 
+uniform mat4 amatrix;
+
 out vec3 ourColor;
 
 
 void main()
 {
-    gl_Position = vec4(position, 1.0f);
+    gl_Position = amatrix * vec4(position, 1.0f);
     ourColor = vertexColor;
 
 }
@@ -97,6 +99,37 @@ glVertexAttribPointer(
 glEnableVertexAttribArray(1)
 
 
+def calculateMatrix(angle):
+    i = glm.mat4(1)
+    translate = glm.translate(i, glm.vec3(0, 0, 0))
+    rotate = glm.rotate(i, glm.radians(angle), glm.vec3(0, 1, 0))
+    scale = glm.scale(i, glm.vec3(1, 1, 1))
+
+    model = translate * rotate * scale
+
+    view = glm.lookAt(
+        glm.vec3(0, 0, 5),
+        glm.vec3(0, 0, 0),
+        glm.vec3(0, 1, 0)
+    )
+
+    projection = glm.perspective(
+        glm.radians(45),
+        1600/1200,
+        0.1,
+        1000.0
+    )
+
+    amatrix = projection * view * model
+
+    glUniformMatrix4fv(
+        glGetUniformLocation(shader, 'amatrix'),
+        1,
+        GL_FALSE,
+        glm.value_ptr(amatrix)
+    )
+
+glViewport(0, 0, 1600, 1200)
 
 
 
@@ -104,7 +137,10 @@ running = True
 
 glClearColor(0.5, 1.0, 0.5, 1.0)
 
+r = 0
+
 while running:
+    r += 1
     glClear(GL_COLOR_BUFFER_BIT)
 
     color1 = random.random()
@@ -119,7 +155,9 @@ while running:
         glm.value_ptr(color)
     )
 
-    pygame.time.wait(100)
+    calculateMatrix(r)
+
+    pygame.time.wait(50)
 
 
     glDrawArrays(GL_TRIANGLES, 0, 3)
