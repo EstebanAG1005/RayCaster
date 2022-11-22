@@ -1,6 +1,7 @@
 import pygame
 import random
 from math import pi, cos, sin, atan2
+import time
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -11,8 +12,8 @@ GROUND = (200, 200, 100)
 colors = [(0, 20, 10), (4, 40, 63), (0, 91, 82), (219, 242, 38), (21, 42, 138)]
 
 walls = {
-    "1": pygame.image.load("./wall1.png"),
-    "2": pygame.image.load("./wall1.png"),
+    "1": pygame.image.load("./caja.png"),
+    "2": pygame.image.load("./caja.png"),
     "3": pygame.image.load("./wall1.png"),
     "4": pygame.image.load("./wall1.png"),
     "5": pygame.image.load("./wall1.png"),
@@ -43,6 +44,12 @@ class Raycaster(object):
             "fov": int(pi / 3),
             "a": int(pi / 3),
         }
+
+    def fpsCounter(self):
+        fuente = pygame.font.Font(None, 25)
+        texto_de_salida = "FPS: " + str(round(clock.get_fps(), 2))
+        texto = fuente.render(texto_de_salida, True, WHITE)
+        return texto
 
     def point(self, x, y, c=WHITE):
         # colocar pixel de game of life
@@ -188,9 +195,11 @@ pygame.init()
 screen = pygame.display.set_mode((1000, 500))
 r = Raycaster(screen)
 r.load_map("./map.txt")
+clock = pygame.time.Clock()
 
 running = True
 while running:
+    screen.blit(r.fpsCounter(), [600, 550])
     screen.fill(BLACK, (0, 0, r.width / 2, r.width / 2))
     screen.fill(SKY, (r.width / 2, 0, r.width, r.height / 2))
     screen.fill(GROUND, (r.width / 2, r.height / 2, r.width, r.height / 2))
