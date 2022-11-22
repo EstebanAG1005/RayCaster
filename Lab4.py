@@ -2,6 +2,7 @@ import pygame
 import numpy
 import glm
 import pyassimp
+import pywavefront
 
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
@@ -81,7 +82,7 @@ shader2 = compileProgram(
     compileShader(fragment_shader2, GL_FRAGMENT_SHADER),
 )
 
-scene2 = pyassimp.load("./cocacola.obj")
+scene2 = pywavefront.Wavefront("./cocacola.obj")
 
 texture_surface = pygame.image.load("./coca.bmp")
 texture_data = pygame.image.tostring(texture_surface, "RGB")
