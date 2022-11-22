@@ -1,193 +1,271 @@
 import numpy
 import random
-from math import pi, cos, sin, atan2
-
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-
-SKY = (50, 100, 200)
-GROUND = (200, 200, 100)
-
-colors = [(0, 20, 10), (4, 40, 63), (0, 91, 82), (219, 242, 38), (21, 42, 138)]
-
-walls = {
-    "1": pygame.image.load("./wall1.png"),
-    "2": pygame.image.load("./wall1.png"),
-    "3": pygame.image.load("./wall1.png"),
-    "4": pygame.image.load("./wall1.png"),
-    "5": pygame.image.load("./wall1.png"),
-}
-
-sprite1 = pygame.image.load("./sprite1.png")
-
-
-enemies = [
-    {"x": 100, "y": 200, "texture": pygame.image.load("./sprite1.png")},
-    {"x": 280, "y": 190, "texture": pygame.image.load("./sprite1.png")},
-    {"x": 225, "y": 340, "texture": pygame.image.load("./sprite1.png")},
-    {"x": 220, "y": 425, "texture": pygame.image.load("./sprite1.png")},
-    {"x": 320, "y": 420, "texture": pygame.image.load("./sprite1.png")},
-]
-
-
-class Raycaster(object):
-    def __init__(self, screen):
-        self.screen = screen
-        _, _, self.width, self.height = screen.get_rect()
-        self.blocksize = 50
-        self.map = []
-        self.zbuffer = [-float("inf") for z in range(0, 500)]
-        self.player = {
-            "x": self.blocksize + self.blocksize / 2,
-            "y": self.blocksize + self.blocksize / 2,
-            "fov": int(pi / 3),
-            "a": int(pi / 3),
-        }
-
-    def point(self, x, y, c=WHITE):
-        # colocar pixel de game of life
-        self.screen.set_at((x, y), c)
-
-    def block(self, x, y, wall):
-        for i in range(x, x + self.blocksize):
-            for j in range(y, y + self.blocksize):
-                tx = int((i - x) * 128 / self.blocksize)
-                ty = int((j - y) * 128 / self.blocksize)
-                c = wall.get_at((tx, ty))
-                self.point(i, j, c)
-
-    def load_map(self, filename):
-        with open(filename) as f:
-            for line in f.readlines():
-                self.map.append(list(line))
-
-    def draw_stake(self, x, h, tx, c):
-        start_y = int(self.height / 2 - h / 2)
-        end_y = int(self.height / 2 + h / 2)
-
-        height = end_y - start_y
-
-        for y in range(start_y, end_y):
-            ty = int((y - start_y) * 128 / height)
-            color = walls[c].get_at((tx, ty))
-            self.point(x, y, color)
-
-    def cast_ray(self, a):
-        d = 0
-        ox = self.player["x"]
-        oy = self.player["y"]
-
-        while True:
-            x = int(ox + d * cos(a))
-            y = int(oy + d * sin(a))
-
-            i = int(x / self.blocksize)
-            j = int(y / self.blocksize)
-
-            if self.map[j][i] != " ":
-                hitx = x - i * self.blocksize
-                hity = y - j * self.blocksize
-
-                if 1 < hitx < self.blocksize - 1:
-                    maxhit = hitx
-                else:
-                    maxhit = hity
-
-                tx = int(maxhit * 128 / self.blocksize)
-                return d, self.map[j][i], tx
-
-            self.point(x, y)
-            d += 5
-
-    def draw_map(self):
-        for x in range(0, 500, self.blocksize):
-            for y in range(0, 500, self.blocksize):
-                i = int(x / self.blocksize)
-                j = int(y / self.blocksize)
-                if self.map[j][i] != " ":
-                    self.block(x, y, walls[self.map[j][i]])
-
-    def draw_player(self):
-        self.point(int(self.player["x"]), int(self.player["y"]))
-
-    def draw_sprite(self, sprite):
-        sprite_a = atan2(
-            sprite["y"] - self.player["y"], sprite["x"] - self.player["x"]
-        )  # why atan2? https://stackoverflow.com/a/12011762
-        sprite_d = (
-            (self.player["x"] - sprite["x"]) ** 2
-            + (self.player["y"] - sprite["y"]) ** 2
-        ) ** 0.5
-        sprite_size = (500 / sprite_d) * 70
-
-        sprite_x = (
-            500
-            + (sprite_a - self.player["a"]) * 500 / self.player["fov"]
-            + 250
-            - sprite_size / 2
-        )
-        sprite_y = 250 - sprite_size / 2
-
-        sprite_x = int(sprite_x)
-        sprite_y = int(sprite_y)
-        sprite_size = int(sprite_size)
-
-        for x in range(sprite_x, sprite_x + sprite_size):
-            for y in range(sprite_y, sprite_y + sprite_size):
-                if 500 < x < 1000 and self.zbuffer[x - 500] >= sprite_d:
-                    tx = int((x - sprite_x) * 128 / sprite_size)
-                    ty = int((y - sprite_y) * 128 / sprite_size)
-                    c = sprite["texture"].get_at((tx, ty))
-                    if c != (152, 0, 136, 255):
-                        self.point(x, y, c)
-                        self.zbuffer[x - 500] = sprite_d
-
-    def render(self):
-        self.draw_map()
-        self.draw_player()
-
-        density = 100
-
-        # minimap
-        for i in range(0, density):
-            a = (
-                self.player["a"]
-                - self.player["fov"] / 2
-                + self.player["fov"] * i / density
-            )
-            d, c, _ = self.cast_ray(a)
-
-        # separador
-        for i in range(0, 500):
-            self.point(499, i)
-            self.point(500, i)
-            self.point(501, i)
-
-        # draw in 3d
-        for i in range(0, int(self.width / 2)):
-            a = (
-                self.player["a"]
-                - self.player["fov"] / 2
-                + self.player["fov"] * i / (self.width / 2)
-            )
-            d, c, tx = self.cast_ray(a)
-
-            x = int(self.width / 2 + i)
-            h = self.height / (d * cos(a - self.player["a"])) * 100
-
-            self.draw_stake(x, h, tx, c)
-            self.zbuffer[i] = d
-
-        for enemy in enemies:
-            self.point(enemy["x"], enemy["y"], (0, 0, 0))
-            self.draw_sprite(enemy)
-
+import pygame
+from OpenGL.GL import *
+from OpenGL.GL.shaders import *
+import glm
+from OBJ import *
+from math import sin, cos
 
 pygame.init()
-# screen = pygame.display.set_mode((1000, 500), pygame.FULLSCREEN)
-screen = pygame.display.set_mode((1000, 500))
-r = Raycaster(screen)
-r.load_map("./map.txt")
+
+screen = pygame.display.set_mode((1000, 800), pygame.OPENGL | pygame.DOUBLEBUF)
+# dT = pygame.time.Clock()
+
+current_x = 0
+current_y = 0
+diff_x = 0
+diff_y = 0
+diff_z = 0
+last_pos = None
+angle = 0.02
+
+vertex_shader = """
+#version 460
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 vertexColor;
+uniform mat4 amatrix;
+out vec3 ourColor;
+out vec2 fragCoord;
+void main()
+{
+    gl_Position = amatrix * vec4(position, 1.0f);
+    fragCoord =  gl_Position.xy;
+    ourColor = vertexColor;
+}
+"""
+
+fragment_shader = """
+#version 460
+layout (location = 0) out vec4 fragColor;
+uniform vec3 color;
+in vec3 ourColor;
+void main()
+{
+    // fragColor = vec4(ourColor, 1.0f);
+    fragColor = vec4(color, 1.0f);
+}
+"""
+
+fragment_shader2 = """
+#version 460
+#define PI 3.14159265358979
+layout (location = 0) out vec4 fragColor;
+uniform vec3 color;
+uniform float iTime;
+in vec2 fragCoord;
+in vec3 ourColor;
+float gm(float eq, float t, float h, float s, bool i)
+{
+    float sg = min(abs(eq), 1.0/abs(eq)); // smooth gradient
+    float og = abs(sin(eq*PI-t)); // oscillating gradient
+    if (i) og = min(og, abs(sin(PI/eq+t))); // reciprocals
+    return pow(1.0-og, h)*pow(sg, s);
+}
+void main()
+{
+    float t = iTime/2.0;
+    float h = 5.0; // hardness
+    float s = 0.25; // shadow
+    bool rc = false; // reciprocals
+    vec3 bg = vec3(0); // black background
+    vec2 R = vec2(1, 1);
+    
+    float aa = 3.0; // anti-aliasing
+    for (float j = 0.0; j < aa; j++)
+    for (float k = 0.0; k < aa; k++)
+    {
+        vec3 c = vec3(0);
+        vec2 o = vec2(j, k)/aa;
+        vec2 sc = (fragCoord-0.5*R+o)/R.y; // screen coords
+        float x2 = sc.x*sc.x;
+        float y2 = sc.y*sc.y;
+        // square root grids
+        c += gm(x2, t, h, s, rc); // x
+        c += gm(y2, 0.0, h, s, rc); // y
+        c += gm(x2+y2, t, h, s, rc); // addition
+        c += gm(x2-y2, t, h, s, rc); // subtraction
+        c += gm(x2*y2, t, h, s, rc); // multiplication
+        c += gm(x2/y2, t, h, s, rc); // division
+        
+        bg += c;
+    }
+    bg /= aa*aa;
+    
+    bg *= sqrt(bg)*0.5; // brightness & contrast
+    fragColor = vec4(bg, 1.0);
+}
+"""
+
+fragment_shader3 = """
+#version 460
+#define NUM_LAYER 8.
+#define PI 3.14159265358979
+layout (location = 0) out vec4 fragColor;
+uniform vec3 color;
+uniform float iTime;
+in vec2 fragCoord;
+in vec3 ourColor;
+mat2 Rot(float angle){
+    float s=sin(angle), c=cos(angle);
+    return mat2(c, -s, s, c);
+}
+//random number between 0 and 1
+float Hash21(vec2 p){
+    p = fract(p*vec2(123.34, 456.21));
+    p +=dot(p, p+45.32);
+    return  fract(p.x*p.y);
+}
+float Star(vec2 uv, float flare){
+    float d = length(uv);//center of screen is origin of uv -- length give us distance from every pixel to te center
+    float m = .05/d;
+    float rays = max(0., 1.-abs(uv.x*uv.y*1000.));
+    m +=rays*flare;
+    
+    uv *=Rot(3.1415/4.);
+    rays = max(0., 1.-abs(uv.x*uv.y*1000.));
+    m +=rays*.3*flare;
+    m *=smoothstep(1., .2, d);
+    return m;
+}
+vec3 StarLayer(vec2 uv){
+   
+   vec3 col = vec3(0.);
+   
+    vec2 gv= fract(uv)-.5; //gv is grid view
+    vec2 id= floor(uv);
+    
+    for(int y=-1; y<=1; y++){
+        for(int x=-1; x<=1; x++){
+            
+            vec2 offset= vec2(x, y);
+            float n = Hash21(id+offset);
+            float size = fract(n*345.32);
+                float star= Star(gv-offset-(vec2(n, fract(n*34.))-.5), smoothstep(.9, 1., size)*.6);
+            vec3 color = sin(vec3(.2, .3, .9)*fract(n*2345.2)*123.2)*.5+.5;
+            color = color*vec3(1., .25, 1.+size);
+            
+            star *=sin(iTime*3.+n*6.2831)*.5+1.;
+            col +=star*size*color; 
+            
+         }
+     }
+    return col;
+}
+void main()
+{
+    vec2 iResolution = vec2(10, 10);
+    vec2 iMouse = vec2(10, 10);
+    vec2 uv = (fragCoord-.5*iResolution.xy)/iResolution.y;
+    float t=  iTime*.02;
+    vec2 M = (iMouse.xy-iResolution.xy*.5)/iResolution.y;
+    uv *=Rot(t);
+    uv +=M*4.;
+    
+    vec3 col = vec3(0.);
+    
+    for(float i =0.; i<1.; i += 1./NUM_LAYER){
+        float depth = fract(i+t);
+        float scale= mix(10.,.5, depth);
+        float fade = depth*smoothstep(1., .9, depth);
+        col += StarLayer(uv*scale+i*453.32-M)*fade;
+    }
+    fragColor = vec4(col,1.0);
+}
+"""
+
+fragment_shader4 = """
+#version 460
+#define PI 3.14159265358979
+layout (location = 0) out vec4 fragColor;
+uniform vec3 color;
+uniform float iTime;
+in vec2 fragCoord;
+in vec3 ourColor;
+void main()
+{
+    vec2 iResolution = vec2(10, 10);
+    fragColor = 9./max((fragCoord-iResolution.xy*.5)*mat2(cos(iTime-log(length(fragCoord))+vec4(0,11,33,0)))+9.,.1).xyyy;
+}
+"""
+
+compiled_vertex_shader = compileShader(vertex_shader, GL_VERTEX_SHADER)
+
+compiled_fragment_shader = compileShader(fragment_shader3, GL_FRAGMENT_SHADER)
+compiled_fragment_shader2 = compileShader(fragment_shader2, GL_FRAGMENT_SHADER)
+compiled_fragment_shader3 = compileShader(fragment_shader3, GL_FRAGMENT_SHADER)
+compiled_fragment_shader4 = compileShader(fragment_shader4, GL_FRAGMENT_SHADER)
+
+shader = compileProgram(compiled_vertex_shader, compiled_fragment_shader)
+
+shader2 = compileProgram(compiled_vertex_shader, compiled_fragment_shader2)
+
+shader3 = compileProgram(compiled_vertex_shader, compiled_fragment_shader3)
+
+shader4 = compileProgram(compiled_vertex_shader, compiled_fragment_shader4)
+
+glUseProgram(shader2)
+glEnable(GL_DEPTH_TEST)
+
+obj = Obj("cocacola.obj")
+vertex_data = obj.vertices
+
+"""
+vertex_data = numpy.array([
+    -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
+     0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
+     0.0,  0.5, 0.0, 0.0, 0.0, 1.0
+], dtype=numpy.float32)
+"""
+
+vertex_buffer_object = glGenBuffers(1)
+glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object)
+glBufferData(
+    GL_ARRAY_BUFFER,  # tipo de datos
+    vertex_data.nbytes,  # tamaño de da data en bytes
+    vertex_data,  # puntero a la data
+    GL_STATIC_DRAW,
+)
+vertex_array_object = glGenVertexArrays(1)
+glBindVertexArray(vertex_array_object)
+
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * 4, ctypes.c_void_p(0))
+glEnableVertexAttribArray(0)
+
+"""
+glVertexAttribPointer(
+    1,
+    3,
+    GL_FLOAT,
+    GL_FALSE,
+    6 * 4,
+    ctypes.c_void_p(3 * 4)
+)
+glEnableVertexAttribArray(1)
+"""
+
+
+def calculateMatrix(angle):
+    i = glm.mat4(1)
+    translate = glm.translate(i, glm.vec3(0, 0, 0))
+    rotate = glm.rotate(i, glm.radians(angle), glm.vec3(0, 1, 0))
+    scale = glm.scale(i, glm.vec3(1, 1, 1))
+
+    model = translate * rotate * scale
+
+    view = glm.lookAt(glm.vec3(0, 0, 5), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
+
+    projection = glm.perspective(glm.radians(45), 1600 / 1200, 0.1, 1000.0)
+
+    amatrix = projection * view * model
+
+    glUniformMatrix4fv(
+        glGetUniformLocation(shader, "amatrix"), 1, GL_FALSE, glm.value_ptr(amatrix)
+    )
+
+
+glViewport(0, 0, 1000, 800)
+
 
 running = True
 
@@ -199,10 +277,18 @@ a = 0
 change = False
 current_shader = shader2
 while running:
-    screen.fill(BLACK, (0, 0, r.width / 2, r.width / 2))
-    screen.fill(SKY, (r.width / 2, 0, r.width, r.height / 2))
-    screen.fill(GROUND, (r.width / 2, r.height / 2, r.width, r.height / 2))
-    r.render()
+    r += 1
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    if change:
+        glUseProgram(current_shader)
+        change = False
+
+    glUniform1f(glGetUniformLocation(shader, "iTime"), r / 100)
+
+    pygame.time.wait(50)
+
+    glDrawArrays(GL_TRIANGLES, 0, len(vertex_data))
 
     pygame.display.flip()
     if last_pos:
@@ -221,17 +307,10 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
-
-            if event.key == pygame.K_s:
-                r.player["a"] += pi / 10
-            if event.key == pygame.K_w:
-                r.player["a"] -= pi / 10
-
-            if event.key == pygame.K_UP:
-                r.player["x"] += 10
-            if event.key == pygame.K_DOWN:
-                r.player["x"] -= 10
-            if event.key == pygame.K_LEFT:
-                r.player["y"] -= 10
-            if event.key == pygame.K_RIGHT:
-                r.player["y"] += 10
+            change = True
+            if event.key == pygame.K_1:
+                current_shader = shader2
+            if event.key == pygame.K_2:
+                current_shader = shader3
+            if event.key == pygame.K_3:
+                current_shader = shader4
