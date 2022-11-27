@@ -5,7 +5,7 @@ import random
 
 
 SKY = (50, 100, 200)
-GROUND = (190, 190, 190)
+GROUND = (164, 160, 147, 255)
 
 # Inicializamos Pygame
 pygame.init()
@@ -30,7 +30,7 @@ weapon = pygame.image.load("./prime.png").convert()
 textures = {"1": wall1, "2": wall2, "3": wall3, "4": wall4, "5": wall5, "6": wall6}
 
 # Posicion de los enemigos
-enemies = [{"x": 100, "y": 150, "texture": enemy1}]
+enemies = [{"x": 400, "y": 100, "texture": enemy1}]
 
 # Clase RayCarter
 class Raycaster:
@@ -138,16 +138,11 @@ class Raycaster:
 
     def render(self):
         for i in range(0, 1000):
-            try:
-                a = self.player["a"] - self.player["fov"] / 2 + (i * 0.00105)
-                d, m, tx = self.cast_ray(a)
-                x = i
-                h = (500 / (d * cos(a - self.player["a"]))) * 50
-                self.draw_stake(x, h, tx, textures[m])
-            except:
-                self.player["x"] = 70
-                self.player["y"] = 70
-                self.game_over()
+            a = self.player["a"] - self.player["fov"] / 2 + (i * 0.00105)
+            d, m, tx = self.cast_ray(a)
+            x = i
+            h = (500 / (d * cos(a - self.player["a"]))) * 50
+            self.draw_stake(x, h, tx, textures[m])
 
         # Dibujar enemigos
         for enemy in enemies:
@@ -174,7 +169,10 @@ class Raycaster:
         # Dibujar Arma
         self.draw_player(500, 244, weapon)
 
-    def text_objects(self, text, font):
+    # create a rectangular object for the
+    # text surface object
+    # https://www.geeksforgeeks.org/python-display-text-to-pygame-window/
+    def text(self, text, font):
         textSurface = font.render(text, True, (255, 255, 255))
         return textSurface, textSurface.get_rect()
 
@@ -189,26 +187,36 @@ class Raycaster:
                 ):
                     exit(0)
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q:
+                    if event.key == pygame.K_z:
                         home = False
-                        self.game_start()
+                        self.start()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_i:
+                        home = False
+                        self.controls()
 
+            # Referencia
+            # https://coderslegacy.com/python/pygame-font/
             screen.fill((100, 25, 40))
             large = pygame.font.Font("Valorant_Font.ttf", 75)
             medium = pygame.font.Font("Valorant_Font.ttf", 35)
             small = pygame.font.Font("Valorant_Font.ttf", 15)
-            TextSurf, TextRect = self.text_objects("WELCOME TO VALORANT", large)
+            TextSurf, TextRect = self.text("WELCOME TO VALORANT", large)
             TextRect.center = (500, 250)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text_objects("PRESS Q TO START", medium)
+            TextSurf, TextRect = self.text(
+                "PRESS Z TO START OR PRESS I TO CHECK CONTROLS", medium
+            )
             TextRect.center = (500, 350)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text_objects("ESC PARA SALIR", small)
+            TextSurf, TextRect = self.text("ESC PARA SALIR", small)
             TextRect.center = (500, 450)
             screen.blit(TextSurf, TextRect)
             pygame.display.update()
 
-    def game_over(self):
+    # Funcion de lost
+    def lost(self):
+        # Se reproduce el sonido cuando pierde
         lose_sound = pygame.mixer.Sound("./Defeat.mp3")
         lose_sound.set_volume(0.1)
         pygame.mixer.Sound.play(lose_sound)
@@ -226,22 +234,31 @@ class Raycaster:
                         home = False
                         self.home_screen()
 
+            # Referencia
+            # https://coderslegacy.com/python/pygame-font/
             screen.fill((255, 0, 0))
             large = pygame.font.Font("Valorant_Font.ttf", 75)
             medium = pygame.font.Font("Valorant_Font.ttf", 35)
             small = pygame.font.Font("Valorant_Font.ttf", 15)
-            TextSurf, TextRect = self.text_objects("GAME OVER", large)
+            TextSurf, TextRect = self.text("DEFEAT", large)
             TextRect.center = (500, 250)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text_objects("PRESIONE R PARA REINICIAR", medium)
+            TextSurf, TextRect = self.text(
+                "YOU'VE BEEN HEADSHOTED OR CRASHED INTO A WALL", medium
+            )
             TextRect.center = (500, 350)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text_objects("ESC PARA SALIR", small)
+            TextSurf, TextRect = self.text("LOOK FOR ANOTHER ANGLE", small)
+            TextRect.center = (500, 400)
+            screen.blit(TextSurf, TextRect)
+            TextSurf, TextRect = self.text("ESC PARA SALIR", small)
             TextRect.center = (500, 450)
             screen.blit(TextSurf, TextRect)
             pygame.display.update()
 
-    def game_win(self):
+    # Funcion cuando gana el juego
+    def win(self):
+        # Se reproduce sonido de victoria
         win_sound = pygame.mixer.Sound("./Win.mp3")
         win_sound.set_volume(0.1)
         pygame.mixer.Sound.play(win_sound)
@@ -259,33 +276,84 @@ class Raycaster:
                         home = False
                         self.home_screen()
 
+            # Referencia
+            # https://coderslegacy.com/python/pygame-font/
             screen.fill((127, 255, 147))
             large = pygame.font.Font("Valorant_Font.ttf", 60)
             medium = pygame.font.Font("Valorant_Font.ttf", 35)
             small = pygame.font.Font("Valorant_Font.ttf", 15)
-            TextSurf, TextRect = self.text_objects("NICE JOB, YOU WON", large)
+            TextSurf, TextRect = self.text("YOU WON THE DUEL", large)
             TextRect.center = (500, 250)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text_objects("PRESIONE R PARA REINICIAR", medium)
-            TextRect.center = (500, 350)
-            screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text_objects("ESC PARA SALIR", small)
-            TextRect.center = (500, 450)
+            TextSurf, TextRect = self.text("ESC PARA SALIR", small)
+            TextRect.center = (500, 300)
             screen.blit(TextSurf, TextRect)
             pygame.display.update()
 
+    # Pantalla con los controles del juego
+    def controls(self):
+        home = True
+
+        while home:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (
+                    event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+                ):
+                    exit(0)
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_z:
+                        home = False
+                        self.start()
+
+            # Referencia
+            # https://coderslegacy.com/python/pygame-font/
+            screen.fill((100, 25, 40))
+            large = pygame.font.Font("Valorant_Font.ttf", 75)
+            medium = pygame.font.Font("Valorant_Font.ttf", 35)
+            small = pygame.font.Font("Valorant_Font.ttf", 15)
+            TextSurf, TextRect = self.text("Move Right => D", medium)
+            TextRect.center = (500, 100)
+            screen.blit(TextSurf, TextRect)
+            TextSurf, TextRect = self.text("Move Left => A", medium)
+            TextRect.center = (500, 150)
+            screen.blit(TextSurf, TextRect)
+            TextSurf, TextRect = self.text("Move Up => W", medium)
+            TextRect.center = (500, 200)
+            screen.blit(TextSurf, TextRect)
+            TextSurf, TextRect = self.text("Move Down => S", medium)
+            TextRect.center = (500, 250)
+            screen.blit(TextSurf, TextRect)
+            TextSurf, TextRect = self.text("Play Music => O", medium)
+            TextRect.center = (500, 300)
+            screen.blit(TextSurf, TextRect)
+            TextSurf, TextRect = self.text(
+                "Use the mouse scroll to look left and right", medium
+            )
+            TextRect.center = (500, 350)
+            screen.blit(TextSurf, TextRect)
+            TextSurf, TextRect = self.text("PRESS Z TO START", large)
+            TextRect.center = (500, 450)
+            screen.blit(TextSurf, TextRect)
+            TextSurf, TextRect = self.text("ESC PARA SALIR", small)
+            TextRect.center = (500, 500)
+            screen.blit(TextSurf, TextRect)
+            pygame.display.update()
+
+    # Sonido del Juego
     def sound(self):
         pygame.mixer.music.load("./ValoMusic.mp3")
         pygame.mixer.music.set_volume(0.1)
         pygame.mixer.music.play(-1)
 
+    # contador de FPS
     def fpsCounter(self):
         fuente = pygame.font.Font(None, 25)
-        texto_de_salida = "FPS: " + str(round(clock.get_fps(), 2))
-        texto = fuente.render(texto_de_salida, True, (255, 255, 255))
-        return texto
+        text_de_salida = "FPS: " + str(round(clock.get_fps(), 2))
+        text = fuente.render(text_de_salida, True, (255, 255, 255))
+        return text
 
-    def game_start(self):
+    # Funcion que inicializa el juego y tiene el movimiento del pesonaje
+    def start(self):
         paused = False
         running = True
         d = 10
@@ -293,10 +361,14 @@ class Raycaster:
             screen.fill(SKY)
             screen.fill(GROUND, (0, r.height / 2.5, r.width, r.height))
             screen.blit(self.fpsCounter(), [0, 0])
-            if (r.player["x"] >= 400 and r.player["x"] <= 420) and (
-                r.player["y"] >= 250 and r.player["y"] <= 265
+            if (r.player["x"] >= 300 and r.player["x"] <= 500) and (
+                r.player["y"] >= 200 and r.player["y"] <= 250
             ):
-                self.game_win()
+                self.win()
+            if (r.player["x"] >= 300 and r.player["x"] <= 500) and (
+                r.player["y"] >= 100 and r.player["y"] <= 250
+            ):
+                self.lost()
             r.render()
             pygame.display.flip()
             clock.tick(60)
@@ -327,8 +399,14 @@ class Raycaster:
                         r.player["a"] += pi / 10
 
 
+# Se inicializa el raycaster
 r = Raycaster(screen)
+
+# Se carga el mapa
 r.load_map("./map.txt")
-pygame.display.set_caption("Valorant Simulator")
+
+# Se usa clock para los fps
 clock = pygame.time.Clock()
+
+# empieza la pantalla de inicio
 r.home_screen()
