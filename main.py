@@ -200,7 +200,6 @@ clock = pygame.time.Clock()
 running = True
 while running:
     screen.blit(r.fpsCounter(), [600, 550])
-    screen.fill(BLACK, (0, 0, r.width / 2, r.width / 2))
     screen.fill(SKY, (r.width / 2, 0, r.width, r.height / 2))
     screen.fill(GROUND, (r.width / 2, r.height / 2, r.width, r.height / 2))
     r.render()
