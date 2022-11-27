@@ -198,18 +198,20 @@ class Raycaster:
             # Referencia
             # https://coderslegacy.com/python/pygame-font/
             screen.fill((100, 25, 40))
-            large = pygame.font.Font("Valorant_Font.ttf", 75)
-            medium = pygame.font.Font("Valorant_Font.ttf", 35)
-            small = pygame.font.Font("Valorant_Font.ttf", 15)
-            TextSurf, TextRect = self.text("WELCOME TO VALORANT", large)
+            TextSurf, TextRect = self.text(
+                "WELCOME TO VALORANT", pygame.font.Font("Valorant_Font.ttf", 70)
+            )
             TextRect.center = (500, 250)
             screen.blit(TextSurf, TextRect)
             TextSurf, TextRect = self.text(
-                "PRESS Z TO START OR PRESS I TO CHECK CONTROLS", medium
+                "PRESS Z TO START OR PRESS I TO CHECK CONTROLS",
+                pygame.font.Font("Valorant_Font.ttf", 30),
             )
             TextRect.center = (500, 350)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("ESC PARA SALIR", small)
+            TextSurf, TextRect = self.text(
+                "ESC PARA SALIR", pygame.font.Font("Valorant_Font.ttf", 20)
+            )
             TextRect.center = (500, 450)
             screen.blit(TextSurf, TextRect)
             pygame.display.update()
@@ -237,21 +239,25 @@ class Raycaster:
             # Referencia
             # https://coderslegacy.com/python/pygame-font/
             screen.fill((255, 0, 0))
-            large = pygame.font.Font("Valorant_Font.ttf", 75)
-            medium = pygame.font.Font("Valorant_Font.ttf", 35)
-            small = pygame.font.Font("Valorant_Font.ttf", 15)
-            TextSurf, TextRect = self.text("DEFEAT", large)
+            TextSurf, TextRect = self.text(
+                "DEFEAT", pygame.font.Font("Valorant_Font.ttf", 70)
+            )
             TextRect.center = (500, 250)
             screen.blit(TextSurf, TextRect)
             TextSurf, TextRect = self.text(
-                "YOU'VE BEEN HEADSHOTED OR CRASHED INTO A WALL", medium
+                "YOU'VE BEEN HEADSHOTED OR CRASHED INTO A WALL",
+                pygame.font.Font("Valorant_Font.ttf", 30),
             )
             TextRect.center = (500, 350)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("LOOK FOR ANOTHER ANGLE", small)
+            TextSurf, TextRect = self.text(
+                "LOOK FOR ANOTHER ANGLE", pygame.font.Font("Valorant_Font.ttf", 20)
+            )
             TextRect.center = (500, 400)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("ESC PARA SALIR", small)
+            TextSurf, TextRect = self.text(
+                "ESC PARA SALIR", pygame.font.Font("Valorant_Font.ttf", 20)
+            )
             TextRect.center = (500, 450)
             screen.blit(TextSurf, TextRect)
             pygame.display.update()
@@ -279,14 +285,15 @@ class Raycaster:
             # Referencia
             # https://coderslegacy.com/python/pygame-font/
             screen.fill((127, 255, 147))
-            large = pygame.font.Font("Valorant_Font.ttf", 60)
-            medium = pygame.font.Font("Valorant_Font.ttf", 35)
-            small = pygame.font.Font("Valorant_Font.ttf", 15)
-            TextSurf, TextRect = self.text("YOU WON THE DUEL", large)
+            TextSurf, TextRect = self.text(
+                "YOU WON THE DUEL", pygame.font.Font("Valorant_Font.ttf", 70)
+            )
             TextRect.center = (500, 250)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("ESC PARA SALIR", small)
-            TextRect.center = (500, 300)
+            TextSurf, TextRect = self.text(
+                "ESC PARA SALIR", pygame.font.Font("Valorant_Font.ttf", 20)
+            )
+            TextRect.center = (500, 350)
             screen.blit(TextSurf, TextRect)
             pygame.display.update()
 
@@ -308,33 +315,45 @@ class Raycaster:
             # Referencia
             # https://coderslegacy.com/python/pygame-font/
             screen.fill((100, 25, 40))
-            large = pygame.font.Font("Valorant_Font.ttf", 75)
-            medium = pygame.font.Font("Valorant_Font.ttf", 35)
-            small = pygame.font.Font("Valorant_Font.ttf", 15)
-            TextSurf, TextRect = self.text("Move Right => D", medium)
+            TextSurf, TextRect = self.text(
+                "Move Right => D", pygame.font.Font("Valorant_Font.ttf", 30)
+            )
             TextRect.center = (500, 100)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("Move Left => A", medium)
+            TextSurf, TextRect = self.text(
+                "Move Left => A", pygame.font.Font("Valorant_Font.ttf", 30)
+            )
             TextRect.center = (500, 150)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("Move Up => W", medium)
+            TextSurf, TextRect = self.text(
+                "Move Up => W", pygame.font.Font("Valorant_Font.ttf", 30)
+            )
             TextRect.center = (500, 200)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("Move Down => S", medium)
+            TextSurf, TextRect = self.text(
+                "Move Down => S", pygame.font.Font("Valorant_Font.ttf", 30)
+            )
             TextRect.center = (500, 250)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("Play Music => O", medium)
+            TextSurf, TextRect = self.text(
+                "Play Music => O", pygame.font.Font("Valorant_Font.ttf", 30)
+            )
             TextRect.center = (500, 300)
             screen.blit(TextSurf, TextRect)
             TextSurf, TextRect = self.text(
-                "Use the mouse scroll to look left and right", medium
+                "Use the mouse scroll to look left and right",
+                pygame.font.Font("Valorant_Font.ttf", 30),
             )
             TextRect.center = (500, 350)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("PRESS Z TO START", large)
+            TextSurf, TextRect = self.text(
+                "PRESS Z TO START", pygame.font.Font("Valorant_Font.ttf", 70)
+            )
             TextRect.center = (500, 450)
             screen.blit(TextSurf, TextRect)
-            TextSurf, TextRect = self.text("ESC PARA SALIR", small)
+            TextSurf, TextRect = self.text(
+                "ESC PARA SALIR", pygame.font.Font("Valorant_Font.ttf", 20)
+            )
             TextRect.center = (500, 500)
             screen.blit(TextSurf, TextRect)
             pygame.display.update()
