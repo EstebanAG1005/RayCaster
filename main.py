@@ -10,7 +10,6 @@ from math import sin, cos
 pygame.init()
 
 screen = pygame.display.set_mode((1000, 800), pygame.OPENGL | pygame.DOUBLEBUF)
-# dT = pygame.time.Clock()
 
 current_x = 0
 current_y = 0
@@ -274,15 +273,15 @@ glClearColor(0, 0, 0, 1.0)
 r = 0
 
 a = 0
-change = False
-current_shader = shader2
+x = 0
+y = 0
+current_shader = shader
 while running:
     r += 1
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    if change:
-        glUseProgram(current_shader)
-        change = False
+
+    glUseProgram(current_shader)
 
     glUniform1f(glGetUniformLocation(shader, "iTime"), r / 100)
 
@@ -291,15 +290,6 @@ while running:
     glDrawArrays(GL_TRIANGLES, 0, len(vertex_data))
 
     pygame.display.flip()
-    if last_pos:
-        diff_x = pygame.mouse.get_pos()[0] - last_pos[0]
-        current_x = pygame.mouse.get_pos()[0]
-        diff_y = pygame.mouse.get_pos()[1] - last_pos[1]
-        current_y -= diff_y / 10.0
-        diff_z = ((current_x**2) + (current_y**2) + 25) ** 0.5
-        a += diff_x / 5
-
-    last_pos = pygame.mouse.get_pos()
 
     calculateMatrix(a)
 
@@ -307,7 +297,14 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
-            change = True
+            if event.key == pygame.K_a:
+                x -= 10
+            if event.key == pygame.K_d:
+                x += 10
+            if event.key == pygame.K_w:
+                y += 10
+            if event.key == pygame.K_s:
+                y -= 10
             if event.key == pygame.K_1:
                 current_shader = shader2
             if event.key == pygame.K_2:
