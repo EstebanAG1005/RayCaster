@@ -209,14 +209,6 @@ glEnable(GL_DEPTH_TEST)
 obj = Obj("cocacola.obj")
 vertex_data = obj.vertices
 
-"""
-vertex_data = numpy.array([
-    -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
-     0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
-     0.0,  0.5, 0.0, 0.0, 0.0, 1.0
-], dtype=numpy.float32)
-"""
-
 vertex_buffer_object = glGenBuffers(1)
 glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object)
 glBufferData(
@@ -230,18 +222,6 @@ glBindVertexArray(vertex_array_object)
 
 glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * 4, ctypes.c_void_p(0))
 glEnableVertexAttribArray(0)
-
-"""
-glVertexAttribPointer(
-    1,
-    3,
-    GL_FLOAT,
-    GL_FALSE,
-    6 * 4,
-    ctypes.c_void_p(3 * 4)
-)
-glEnableVertexAttribArray(1)
-"""
 
 
 def calculateMatrix(angle):
