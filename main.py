@@ -11,14 +11,6 @@ pygame.init()
 
 screen = pygame.display.set_mode((1000, 800), pygame.OPENGL | pygame.DOUBLEBUF)
 
-current_x = 0
-current_y = 0
-diff_x = 0
-diff_y = 0
-diff_z = 0
-last_pos = None
-angle = 0.02
-
 vertex_shader = """
 #version 460
 layout (location = 0) in vec3 position;
@@ -222,35 +214,21 @@ shader4 = compileProgram(compiled_vertex_shader, compiled_fragment_shader4)
 glUseProgram(shader2)
 glEnable(GL_DEPTH_TEST)
 
-obj = Obj("cocacola.obj")
+obj = Obj("coffe.obj")
 
-vertices = []
-texcoords = []
-normals = []
-for face in obj.faces:
-    for v in range(len(face)):
-        vertices.append((obj.vertices[face[v][0] - 1]))
-        texcoords.append((obj.texcoords[face[v][1] - 1]))
-        normals.append((obj.normals[face[v][2] - 1]))
+# Se cargan los objetos para vertices
+vertex = []
+for ver in obj.vertices:
+    for v in ver:
+        vertex.append(v)
 
-vertex_data = numpy.hstack(
-    [
-        numpy.array(vertices, dtype=numpy.float32),
-        numpy.array(texcoords, dtype=numpy.float32),
-        numpy.array(normals, dtype=numpy.float32),
-    ]
-)
+vertex_data = numpy.array(vertex, dtype=numpy.float32)
 
+# Se cargan los objetos para caras
 faces = []
 for face in obj.faces:
     for f in face:
         faces.append(int(f[0]) - 1)
-
-index_data = numpy.hstack(
-    [
-        numpy.array(faces, dtype=numpy.int32),
-    ]
-)
 
 index_data = numpy.array(faces, dtype=numpy.int32)
 
@@ -269,11 +247,11 @@ glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * 4, ctypes.c_void_p(0))
 glEnableVertexAttribArray(0)
 
 
-def calculateMatrix(angle):
+def calculateMatrix(angle, new_vec):
     i = glm.mat4(1)
-    translate = glm.translate(i, glm.vec3(0, 0, 0))
-    rotate = glm.rotate(i, glm.radians(angle), glm.vec3(0, 1, 0))
-    scale = glm.scale(i, glm.vec3(1, 1, 1))
+    translate = glm.translate(i, glm.vec3(0, -1, 0))
+    rotate = glm.rotate(i, glm.radians(angle), new_vec)
+    scale = glm.scale(i, glm.vec3(3, 3, 3))
 
     model = translate * rotate * scale
 
@@ -297,8 +275,7 @@ glClearColor(0, 0, 0, 1.0)
 
 r = 0
 a = 0
-x = 0
-y = 0
+new_vec = glm.vec3(0, 1, 0)
 
 current_shader = shader
 while running:
@@ -312,7 +289,7 @@ while running:
 
     glDrawElements(GL_TRIANGLES, len(index_data), GL_UNSIGNED_INT, None)
 
-    calculateMatrix(a)
+    calculateMatrix(a, new_vec)
 
     pygame.display.flip()
 
@@ -320,17 +297,21 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_a:
-                x -= 10
-            if event.key == pygame.K_d:
-                x += 10
-            if event.key == pygame.K_w:
-                y += 10
-            if event.key == pygame.K_s:
-                y -= 10
             if event.key == pygame.K_1:
                 current_shader = shader
             if event.key == pygame.K_2:
                 current_shader = shader3
             if event.key == pygame.K_3:
                 current_shader = shader4
+            if event.key == pygame.K_UP:
+                new_vec = glm.vec3(1, 0, 0)
+                r += 1
+            if event.key == pygame.K_DOWN:
+                new_vec = glm.vec3(1, 0, 0)
+                r -= 1
+            if event.key == pygame.K_RIGHT:
+                new_vec = glm.vec3(0, 1, 0)
+                r += 1
+            if event.key == pygame.K_LEFT:
+                new_vec = glm.vec3(0, 1, 0)
+                r -= 1
