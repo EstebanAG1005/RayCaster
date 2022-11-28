@@ -36,13 +36,29 @@ void main()
 
 fragment_shader = """
 #version 460
-layout (location = 0) out vec4 fragColor;
-uniform vec3 color;
-in vec3 ourColor;
+layout(location = 0) out vec4 fragColor;
+in float intensity;
+in float intensity2;
+in vec2 vertexTexcoords;
+in vec3 lPosition;
+in vec4 fNormal;
+in float time;
+uniform sampler2D tex;
+uniform vec4 diffuse;
+uniform vec4 ambient;
 void main()
 {
-    // fragColor = vec4(ourColor, 1.0f);
-    fragColor = vec4(color, 1.0f);
+	vec3 color = vec3(0.0, 0.0, 0.0);
+	
+	if( abs(mod( abs(lPosition.x), abs(.2 * sin(time * 10.0) )   )) < .1){
+		color.x = 1.0;
+	}
+	
+	
+	if( abs(mod(lPosition.z, .2 * sin(time * 10.0 + 1.0))) < .1){
+		color.z = 1.0;
+	}
+	gl_FragColor = vec4(color, 1.0) * intensity2;
 }
 """
 
@@ -190,7 +206,7 @@ void main()
 
 compiled_vertex_shader = compileShader(vertex_shader, GL_VERTEX_SHADER)
 
-compiled_fragment_shader = compileShader(fragment_shader3, GL_FRAGMENT_SHADER)
+compiled_fragment_shader = compileShader(fragment_shader2, GL_FRAGMENT_SHADER)
 compiled_fragment_shader2 = compileShader(fragment_shader2, GL_FRAGMENT_SHADER)
 compiled_fragment_shader3 = compileShader(fragment_shader3, GL_FRAGMENT_SHADER)
 compiled_fragment_shader4 = compileShader(fragment_shader4, GL_FRAGMENT_SHADER)
@@ -207,18 +223,47 @@ glUseProgram(shader2)
 glEnable(GL_DEPTH_TEST)
 
 obj = Obj("cocacola.obj")
-vertex_data = obj.vertices
+
+vertices = []
+texcoords = []
+normals = []
+for face in obj.faces:
+    for v in range(len(face)):
+        vertices.append((obj.vertices[face[v][0] - 1]))
+        texcoords.append((obj.texcoords[face[v][1] - 1]))
+        normals.append((obj.normals[face[v][2] - 1]))
+
+vertex_data = numpy.hstack(
+    [
+        numpy.array(vertices, dtype=numpy.float32),
+        numpy.array(texcoords, dtype=numpy.float32),
+        numpy.array(normals, dtype=numpy.float32),
+    ]
+)
+
+faces = []
+for face in obj.faces:
+    for f in face:
+        faces.append(int(f[0]) - 1)
+
+index_data = numpy.hstack(
+    [
+        numpy.array(faces, dtype=numpy.int32),
+    ]
+)
+
+index_data = numpy.array(faces, dtype=numpy.int32)
+
+vertex_array_object = glGenVertexArrays(1)
+glBindVertexArray(vertex_array_object)
 
 vertex_buffer_object = glGenBuffers(1)
 glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object)
-glBufferData(
-    GL_ARRAY_BUFFER,  # tipo de datos
-    vertex_data.nbytes,  # tamaño de da data en bytes
-    vertex_data,  # puntero a la data
-    GL_STATIC_DRAW,
-)
-vertex_array_object = glGenVertexArrays(1)
-glBindVertexArray(vertex_array_object)
+glBufferData(GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, GL_STATIC_DRAW)
+
+element_buffer_object = glGenBuffers(1)
+glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer_object)
+glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_data.nbytes, index_data, GL_STATIC_DRAW)
 
 glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * 4, ctypes.c_void_p(0))
 glEnableVertexAttribArray(0)
@@ -251,10 +296,10 @@ running = True
 glClearColor(0, 0, 0, 1.0)
 
 r = 0
-
 a = 0
 x = 0
 y = 0
+
 current_shader = shader
 while running:
     r += 1
@@ -265,13 +310,11 @@ while running:
 
     glUniform1f(glGetUniformLocation(shader, "iTime"), r / 100)
 
-    pygame.time.wait(50)
-
-    glDrawArrays(GL_TRIANGLES, 0, len(vertex_data))
-
-    pygame.display.flip()
+    glDrawElements(GL_TRIANGLES, len(index_data), GL_UNSIGNED_INT, None)
 
     calculateMatrix(a)
+
+    pygame.display.flip()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -286,7 +329,7 @@ while running:
             if event.key == pygame.K_s:
                 y -= 10
             if event.key == pygame.K_1:
-                current_shader = shader2
+                current_shader = shader
             if event.key == pygame.K_2:
                 current_shader = shader3
             if event.key == pygame.K_3:
