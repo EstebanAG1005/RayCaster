@@ -15,22 +15,18 @@ vertex_shader = """
 #version 460
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 vertexColor;
-
 uniform mat4 amatrix;
-
 out vec3 ourColor;
 out vec2 fragCoord;
-
-
 void main()
 {
-    gl_Position = vec4(position, 1.0f);
     gl_Position = amatrix * vec4(position, 1.0f);
     ourColor = vertexColor;
-
+    fragCoord = gl_Position.xy;
 }
 """
 
+# Referencia https://www.shadertoy.com/view/4tc3WB
 fragment_shader = """
 #version 460
 
@@ -721,21 +717,549 @@ void main()
 
 """
 
+# Referencia https://www.shadertoy.com/view/llcXW7
+fragment_shader2 = """
+#version 460
+
+vec2 iResolution = vec2(2, 2);
+layout (location = 0) out vec4 fragColor;
+in vec2 fragCoord;
+uniform float iTime;
+float gTime;
+
+#define TAU 6.28318530718
+
+#define TILING_FACTOR 1.0
+#define MAX_ITER 8
+
+
+float waterHighlight(vec2 p, float time, float foaminess)
+{
+    vec2 i = vec2(p);
+	float c = 0.0;
+    float foaminess_factor = mix(1.0, 6.0, foaminess);
+	float inten = .005 * foaminess_factor;
+
+	for (int n = 0; n < MAX_ITER; n++) 
+	{
+		float t = time * (1.0 - (3.5 / float(n+1)));
+		i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+		c += 1.0/length(vec2(p.x / (sin(i.x+t)),p.y / (cos(i.y+t))));
+	}
+	c = 0.2 + c / (inten * float(MAX_ITER));
+	c = 1.17-pow(c, 1.4);
+    c = pow(abs(c), 8.0);
+	return c / sqrt(foaminess_factor);
+}
+
+
+void main() 
+{
+	float time = iTime * 0.1+23.0;
+	vec2 uv = fragCoord.xy / iResolution.xy;
+	vec2 uv_square = vec2(uv.x * iResolution.x / iResolution.y, uv.y);
+    float dist_center = pow(2.0*length(uv - 0.5), 2.0);
+    
+    float foaminess = smoothstep(0.4, 1.8, dist_center);
+    float clearness = 0.1 + 0.9*smoothstep(0.1, 0.5, dist_center);
+    
+	vec2 p = mod(uv_square*TAU*TILING_FACTOR, TAU)-250.0;
+    
+    float c = waterHighlight(p, time, foaminess);
+    
+    vec3 water_color = vec3(0.0, 0.35, 0.5);
+	vec3 color = vec3(c);
+    color = clamp(color + water_color, 0.0, 1.0);
+    
+    color = mix(water_color, color, clearness);
+
+	fragColor = vec4(color, 1.0);
+}
+"""
+
+# Referencia https://www.shadertoy.com/view/ldB3Dt
+fragment_shader3 = """
+#version 460
+
+vec2 iResolution = vec2(2, 2);
+layout (location = 0) out vec4 fragColor;
+in vec2 fragCoord;
+uniform float iTime;
+float gTime;
+
+#define FARCLIP    35.0
+
+#define MARCHSTEPS 60
+#define AOSTEPS    8
+#define SHSTEPS    10
+#define SHPOWER    3.0
+
+#define PI         3.14
+#define PI2        PI*0.5    
+
+#define AMBCOL     vec3(1.0,1.0,1.0)
+#define BACCOL     vec3(1.0,1.0,1.0)
+#define DIFCOL     vec3(1.0,1.0,1.0)
+
+#define MAT1       1.0
+
+#define FOV 1.0
+
+
+/***********************************************/
+float rbox(vec3 p, vec3 s, float r) {	
+    return length(max(abs(p)-s+vec3(r),0.0))-r;
+}
+float torus(vec3 p, vec2 t) {
+    vec2 q = vec2(length(p.xz)-t.x,p.y);
+    return length(q)-t.y;
+}
+float cylinder(vec3 p, vec2 h) {
+    return max( length(p.xz)-h.x, abs(p.y)-h.y );
+}
+
+/***********************************************/
+void oprep2(inout vec2 p, float l, float s, float k) {
+	float r=1./l;
+	float ofs=s+s/(r*2.0);
+	float a= mod( atan(p.x, p.y) + PI2*r*k, PI*r) -PI2*r;
+	p.xy=vec2(sin(a),cos(a))*length(p.xy) -ofs;
+	p.x+=ofs;
+}
+
+float hash(float n) { 
+	return fract(sin(n)*43758.5453123); 
+}
+
+float noise3(vec3 x) {
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+    f = f*f*(3.0-2.0*f);
+    float n = p.x + p.y*57.0 + p.z*113.0;
+    float res = mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
+                        mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y),
+                    mix(mix( hash(n+113.0), hash(n+114.0),f.x),
+                        mix( hash(n+170.0), hash(n+171.0),f.x),f.y),f.z);
+    return res;
+}
+
+float sminp(float a, float b) {
+    const float k=0.1;
+    float h = clamp( 0.5+0.5*(b-a)/k, 0.0, 1.0 );
+    return mix( b, a, h ) - k*h*(1.0-h);
+}
+
+
+/***********************************************/
+
+vec2 DE(vec3 p) {
+    
+    //distortion
+    float d3=noise3(p*2.0 + iTime)*0.18;
+    //shape
+    float h=torus(p, vec2(3.0,1.5)) -d3;
+    float h2=torus(p, vec2(3.0,1.45)) -d3;
+        vec3 q=p.yzx; p.yz=q.yx;
+        oprep2(p.xy,32.0,0.15, 0.0);
+        oprep2(p.yz,14.0,0.15, 0.0);
+        float flag=p.z;
+        float k=rbox(p,vec3(0.05,0.05,1.0),0.0) ;
+        if (flag>0.1) k-=flag*0.18; else k-=0.01 ;
+
+    //pipes
+    p=q.zyx;
+
+    oprep2(p.xy,3.0,8.5, 3.0);
+    oprep2(p.xz,12.0,0.25, 0.0);
+        
+    p.y=mod(p.y,0.3)-0.5*0.3;
+    float k2=rbox(p,vec3(0.12,0.12,1.0),0.05) - 0.01;
+
+    p=q.xzy;
+    float r=p.y*0.02+sin(iTime)*0.05;
+        oprep2(p.zy,3.0,8.5, 0.0);
+    float g=cylinder(p,vec2(1.15+r,17.0)) - sin(p.y*1.3 - iTime*4.0)*0.1 -d3;
+    float g2=cylinder(p,vec2(1.05+r,18.0)) - sin(p.y*1.3 - iTime*4.0)*0.1 -d3;
+
+      float tot=max(h,-h2);
+      float sub=max(g,-g2);
+        float o=max(tot,-g);
+        float i=max(sub,-h);
+        
+            o=max(o,-k);
+            i=max(i,-k2);
+      
+      tot=sminp(o,i);
+
+	return vec2( tot*0.9 , MAT1);
+}
+/***********************************************/
+vec3 normal(vec3 p) {
+	vec3 e=vec3(0.01,-0.01,0.0);
+	return normalize( vec3(	e.xyy*DE(p+e.xyy).x +	e.yyx*DE(p+e.yyx).x +	e.yxy*DE(p+e.yxy).x +	e.xxx*DE(p+e.xxx).x));
+}
+/***********************************************/
+float calcAO(vec3 p, vec3 n ){
+	float ao = 0.0;
+	float sca = 1.0;
+	for (int i=0; i<AOSTEPS; i++) {
+        	float h = 0.01 + 1.2*pow(float(i)/float(AOSTEPS),1.5);
+        	float dd = DE( p+n*h ).x;
+        	ao += -(dd-h)*sca;
+        	sca *= 0.65;
+    	}
+   return clamp( 1.0 - 1.0*ao, 0.0, 1.0 );
+ //  return clamp(ao,0.0,1.0);
+}
+/***********************************************/
+float calcSh( vec3 ro, vec3 rd, float s, float e, float k ) {
+	float res = 1.0;
+    for( int i=0; i<SHSTEPS; i++ ) {
+    	if( s>e ) break;
+        float h = DE( ro + rd*s ).x;
+        res = min( res, k*h/s );
+    	s += 0.02*SHPOWER;
+    }
+    return clamp( res, 0.0, 1.0 );
+}
+/***********************************************/
+void rot( inout vec3 p, vec3 r) {
+	float sa=sin(r.y); float sb=sin(r.x); float sc=sin(r.z);
+	float ca=cos(r.y); float cb=cos(r.x); float cc=cos(r.z);
+	p*=mat3( cb*cc, cc*sa*sb-ca*sc, ca*cc*sb+sa*sc,	cb*sc, ca*cc+sa*sb*sc, -cc*sa+ca*sb*sc,	-sb, cb*sa, ca*cb );
+}
+/***********************************************/
+void main() {
+    vec2 p = -1.0 + 2.0 * fragCoord.xy / iResolution.xy;
+    p.x *= iResolution.x/iResolution.y;	
+	vec3 ta = vec3(0.0, 0.0, 0.0);
+	vec3 ro =vec3(0.0, 0.0, -15.0);
+	vec3 lig=normalize(vec3(2.3, 3.0, 0.0));
+	
+//	vec2 mp=iMouse.xy/iResolution.xy;
+//	rot(ro,vec3(mp.x,mp.y,0.0));
+//	rot(lig,vec3(mp.x,mp.y,0.0));
+	
+    float a=iTime*0.5;
+    float b=sin(iTime*0.25)*0.75;
+	rot(ro,vec3(a,b,0.0));
+	rot(lig,vec3(a,b,0.0));
+
+	vec3 cf = normalize( ta - ro );
+    vec3 cr = normalize( cross(cf,vec3(0.0,1.0,0.0) ) );
+    vec3 cu = normalize( cross(cr,cf));
+	vec3 rd = normalize( p.x*cr + p.y*cu + 2.5*cf );
+
+	vec3 col=vec3(0.0);
+	/* trace */
+	vec2 r=vec2(0.0);	
+	float d=0.0;
+	vec3 ww;
+	for(int i=0; i<MARCHSTEPS; i++) {
+		ww=ro+rd*d;
+		r=DE(ww);		
+        if( abs(r.x)<0.00 || r.x>FARCLIP ) break;
+        d+=r.x;
+	}
+    r.x=d;
+	/* draw */
+	if( r.x<FARCLIP ) {
+	    vec2 rs=vec2(0.2,1.0);  //rim and spec
+		if (r.y==MAT1) { col=vec3(0.29,0.53,0.91);  } 
+
+		vec3 nor=normal(ww);
+
+    	float amb= 1.0;		
+    	float dif= clamp(dot(nor, lig), 0.0,1.0);
+    	float bac= clamp(dot(nor,-lig), 0.0,1.0);
+    	float rim= pow(1.+dot(nor,rd), 3.0);
+    	float spe= pow(clamp( dot( lig, reflect(rd,nor) ), 0.5, 1.0 ) ,16.0 );
+    	float ao= calcAO(ww, nor);
+    	float sh= calcSh(ww, lig, 0.01, 2.0, 4.0);
+
+	    col *= 0.5*amb*AMBCOL*ao + 0.4*dif*DIFCOL*sh + 0.05*bac*BACCOL*ao;
+	    col += 0.3*rim*amb * rs.x;
+    	col += 0.5*pow(spe,1.0)*sh * rs.y;
+        
+	}
+	
+	col*=exp(.08*-r.x); col*=2.0;
+	
+	fragColor = vec4( col, 1.0 );
+}
+
+"""
+
+# Refrencia https://www.shadertoy.com/view/MlS3Rh
+fragment_shader4 = """
+#version 460
+
+vec2 iResolution = vec2(2, 2);
+layout (location = 0) out vec4 fragColor;
+in vec2 fragCoord;
+uniform float iTime;
+float gTime;
+
+// "Vortex Street" by dr2 - 2015
+// License: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+
+// Motivated by implementation of van Wijk's IBFV by eiffie (lllGDl) and andregc (4llGWl) 
+
+const vec4 cHashA4 = vec4 (0., 1., 57., 58.);
+const vec3 cHashA3 = vec3 (1., 57., 113.);
+const float cHashM = 43758.54;
+
+vec4 Hashv4f (float p)
+{
+  return fract (sin (p + cHashA4) * cHashM);
+}
+
+float Noisefv2 (vec2 p)
+{
+  vec2 i = floor (p);
+  vec2 f = fract (p);
+  f = f * f * (3. - 2. * f);
+  vec4 t = Hashv4f (dot (i, cHashA3.xy));
+  return mix (mix (t.x, t.y, f.x), mix (t.z, t.w, f.x), f.y);
+}
+
+float Fbm2 (vec2 p)
+{
+  float s = 0.;
+  float a = 1.;
+  for (int i = 0; i < 6; i ++) {
+    s += a * Noisefv2 (p);
+    a *= 0.5;
+    p *= 2.;
+  }
+  return s;
+}
+
+float tCur;
+
+vec2 VortF (vec2 q, vec2 c)
+{
+  vec2 d = q - c;
+  return 0.25 * vec2 (d.y, - d.x) / (dot (d, d) + 0.05);
+}
+
+vec2 FlowField (vec2 q)
+{
+  vec2 vr, c;
+  float dir = 1.;
+  c = vec2 (mod (tCur, 10.) - 20., 0.6 * dir);
+  vr = vec2 (0.);
+  for (int k = 0; k < 30; k ++) {
+    vr += dir * VortF (4. * q, c);
+    c = vec2 (c.x + 1., - c.y);
+    dir = - dir;
+  }
+  return vr;
+}
+
+void main()
+{
+  vec2 uv = gl_FragCoord.xy / iResolution.xy - 0.5;
+  uv.x *= iResolution.x / iResolution.y;
+  tCur = iTime;
+  vec2 p = uv;
+  for (int i = 0; i < 10; i ++) p -= FlowField (p) * 0.03;
+  vec3 col = Fbm2 (5. * p + vec2 (-0.1 * tCur, 0.)) *
+     vec3 (0.5, 0.5, 1.);
+  fragColor = vec4 (col, 1.);
+}
+
+
+"""
+# Referencia https://www.shadertoy.com/view/Xs2SWd
+fragment_shader5 = """
+#version 460
+
+vec2 iResolution = vec2(2, 2);
+layout (location = 0) out vec4 fragColor;
+in vec2 fragCoord;
+uniform float iTime;
+float gTime;
+
+/**
+ * Created by Kamil Kolaczynski (revers) - 2014
+
+ * Modified version of shader "abstarct" ( https://www.shadertoy.com/view/4sSGDd ) by avix.
+ */
+#define NEAR 0.0
+#define FAR 50.0
+#define MAX_STEPS 64
+
+#define PI 3.14159265359
+#define EPS 0.001
+
+// Hash by iq
+float hash(vec2 p) {
+	float h = 1.0 + dot(p, vec2(127.1, 311.7));
+	return fract(sin(h) * 43758.5453123);
+}
+
+float rbox(vec3 p, vec3 s, float r) {
+	return length(max(abs(p) - s + vec3(r), 0.0)) - r;
+}
+
+vec2 rot(vec2 k, float t) {
+	float ct = cos(t);
+	float st = sin(t);
+	return vec2(ct * k.x - st * k.y, st * k.x + ct * k.y);
+}
+
+void oprep2(inout vec2 p, float q, float s, float k) {
+	float r = 1.0 / q;
+	float ofs = s;
+	float angle = atan(p.x, p.y);
+	float a = mod(angle, 2.0 * PI * r) - PI * r;
+	p.xy = vec2(sin(a), cos(a)) * length(p.xy) - ofs;
+	p.x += ofs;
+}
+
+float map(vec3 p) {
+	p.y -= 1.0;
+	p.xy = rot(p.xy, p.z * 0.15);
+	p.z += iTime;
+	p.xy = mod(p.xy, 6.0) - 0.5 * 6.0;
+	p.xy = rot(p.xy, -floor(p.z / 0.75) * 0.35);
+	p.z = mod(p.z, 0.75) - 0.5 * 0.75;
+	oprep2(p.xy, 6.0, 0.45, iTime);
+
+	return rbox(p, vec3(0.1, 0.025, 0.25), 0.05);
+}
+
+vec3 getNormal(vec3 p) {
+	float h = 0.0001;
+
+	return normalize(
+			vec3(map(p + vec3(h, 0, 0)) - map(p - vec3(h, 0, 0)),
+					map(p + vec3(0, h, 0)) - map(p - vec3(0, h, 0)),
+					map(p + vec3(0, 0, h)) - map(p - vec3(0, 0, h))));
+}
+
+float saw(float x, float d, float s, float shift) {
+	float xp = PI * (x * d + iTime * 0.5 + shift);
+
+	float as = asin(s);
+	float train = 0.5 * sign(sin(xp - as) - s) + 0.5;
+
+	float range = (PI - 2.0 * as);
+	xp = mod(xp, 2.0 * PI);
+	float y = mod(-(xp - 2.0 * as), range) / range;
+	y *= train;
+
+	return y;
+}
+
+vec3 getShading(vec3 p, vec3 normal, vec3 lightPos) {
+	vec3 lightDirection = normalize(lightPos - p);
+	float lightIntensity = clamp(dot(normal, lightDirection), 0.0, 1.0);
+
+	vec2 id = floor((p.xy + 3.0) / 6.0);
+	float fid = hash(id);
+	float ve = hash(id);
+
+	vec3 col = vec3(0.0, 1.0, 0.0);
+	col *= 4.0 * saw(p.z, 0.092, 0.77, fid * 2.5);
+
+	vec3 amb = vec3(0.15, 0.2, 0.32);
+	vec3 tex = vec3(0.8098039, 0.8607843, 1.0);
+
+	return col * tex * lightIntensity + amb * (1.0 - lightIntensity);
+}
+
+void raymarch(vec3 ro, vec3 rd, out int i, out float t) {
+	t = 0.0;
+
+	for (int j = 0; j < MAX_STEPS; ++j) {
+		vec3 p = ro + rd * t;
+		float h = map(p);
+		i = j;
+
+		if (h < EPS || t > FAR) {
+			break;
+		}
+		t += h * 0.7;
+	}
+}
+
+float computeSun(vec3 ro, vec3 rd, float t, float lp) {
+	vec3 lpos = vec3(0.0, 0.0, 54.0);
+	ro -= lpos;
+	float m = dot(rd, -ro);
+	float d = length(ro - vec3(0.0, 0.0, 0.7) + m * rd);
+
+	float a = -m;
+	float b = t - m;
+	float aa = atan(a / d);
+	float ba = atan(b / d);
+	float to = (ba - aa) / d;
+
+	return to * 0.15 * lp;
+}
+
+vec3 computeColor(vec3 ro, vec3 rd) {
+	int i;
+	float t;
+	raymarch(ro, rd, i, t);
+
+	float lp = sin(iTime - 1.0) + 1.3;
+	vec3 color = vec3(0.0, 1.0, 0.0);
+
+	if (i < MAX_STEPS && t >= NEAR && t <= FAR) {
+		vec3 p = ro + rd * t;
+		vec3 normal = getNormal(p);
+
+		float z = 1.0 - (NEAR + t) / (FAR - NEAR);
+
+		color = getShading(p, normal, vec3(0.0));
+		color *= lp;
+
+		float zSqrd = z * z;
+		color = mix(vec3(0.0), color, zSqrd * (3.0 - 2.0 * z)); // Fog
+
+		color += computeSun(ro, rd, t, lp);
+		return pow(color, vec3(0.8));
+	}
+	return color * computeSun(ro, rd, t, lp);
+}
+
+void main() {
+	vec2 q = fragCoord.xy / iResolution.xy;
+	vec2 coord = 2.0 * q - 1.0;
+	coord.x *= iResolution.x / iResolution.y;
+	coord *= 0.84;
+
+	vec3 dir = vec3(0.0, 0.0, 1.0);
+	vec3 up = vec3(0.0, 1.0, 0.0);
+
+	vec3 right = normalize(cross(dir, up));
+
+	vec3 ro = vec3(0.0, 0.0, 8.74);
+	vec3 rd = normalize(dir * 2.0 + coord.x * right + coord.y * up);
+	vec3 col = computeColor(ro, rd);
+
+	fragColor = vec4(col, 1.0);
+}
+
+"""
+# Los diferentes shaders fueron obtenidos de https://www.shadertoy.com/
 
 compiled_vertex_shader = compileShader(vertex_shader, GL_VERTEX_SHADER)
 
 compiled_fragment_shader = compileShader(fragment_shader, GL_FRAGMENT_SHADER)
-# compiled_fragment_shader2 = compileShader(fragment_shader2, GL_FRAGMENT_SHADER)
-# compiled_fragment_shader3 = compileShader(fragment_shader3, GL_FRAGMENT_SHADER)
-# compiled_fragment_shader4 = compileShader(fragment_shader4, GL_FRAGMENT_SHADER)
+compiled_fragment_shader2 = compileShader(fragment_shader2, GL_FRAGMENT_SHADER)
+compiled_fragment_shader3 = compileShader(fragment_shader3, GL_FRAGMENT_SHADER)
+compiled_fragment_shader4 = compileShader(fragment_shader4, GL_FRAGMENT_SHADER)
+compiled_fragment_shader5 = compileShader(fragment_shader5, GL_FRAGMENT_SHADER)
 
 shader = compileProgram(compiled_vertex_shader, compiled_fragment_shader)
-
-# shader2 = compileProgram(compiled_vertex_shader, compiled_fragment_shader2)
-3
-# shader3 = compileProgram(compiled_vertex_shader, compiled_fragment_shader3)
-
-# shader4 = compileProgram(compiled_vertex_shader, compiled_fragment_shader4)
+shader2 = compileProgram(compiled_vertex_shader, compiled_fragment_shader2)
+shader3 = compileProgram(compiled_vertex_shader, compiled_fragment_shader3)
+shader4 = compileProgram(compiled_vertex_shader, compiled_fragment_shader4)
+shader5 = compileProgram(compiled_vertex_shader, compiled_fragment_shader5)
 
 glUseProgram(shader)
 glEnable(GL_DEPTH_TEST)
@@ -775,13 +1299,13 @@ glEnableVertexAttribArray(0)
 
 def calculateMatrix(angle, new_vec):
     i = glm.mat4(1)
-    translate = glm.translate(i, glm.vec3(0, -1, 0))
+    translate = glm.translate(i, glm.vec3(0, -0.5, 0))
     rotate = glm.rotate(i, glm.radians(angle), new_vec)
-    scale = glm.scale(i, glm.vec3(3, 3, 3))
+    scale = glm.scale(i, glm.vec3(1, 1, 1))
 
     model = translate * rotate * scale
 
-    view = glm.lookAt(glm.vec3(0, 0, 5), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
+    view = glm.lookAt(glm.vec3(0, 0, 2), glm.vec3(0, 0, 0), glm.vec3(0, 1, 0))
 
     projection = glm.perspective(glm.radians(45), 1600 / 1200, 0.1, 1000.0)
 
@@ -823,9 +1347,13 @@ while running:
             if event.key == pygame.K_1:
                 current_shader = shader
             if event.key == pygame.K_2:
-                current_shader = shader3
+                current_shader = shader2
             if event.key == pygame.K_3:
+                current_shader = shader3
+            if event.key == pygame.K_4:
                 current_shader = shader4
+            if event.key == pygame.K_5:
+                current_shader = shader5
             if event.key == pygame.K_w:
                 new_vec = glm.vec3(1, 0, 0)
                 angle += 10
