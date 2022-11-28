@@ -196,6 +196,7 @@ class Raycaster:
                         self.controls()
 
             # Referencia
+            # https://www.youtube.com/watch?v=eS5G5b3Ruvc
             # https://coderslegacy.com/python/pygame-font/
             screen.fill((100, 25, 40))
             TextSurf, TextRect = self.text(
@@ -237,6 +238,7 @@ class Raycaster:
                         self.home_screen()
 
             # Referencia
+            # https://www.youtube.com/watch?v=eS5G5b3Ruvc
             # https://coderslegacy.com/python/pygame-font/
             screen.fill((255, 0, 0))
             TextSurf, TextRect = self.text(
@@ -283,6 +285,7 @@ class Raycaster:
                         self.home_screen()
 
             # Referencia
+            # https://www.youtube.com/watch?v=eS5G5b3Ruvc
             # https://coderslegacy.com/python/pygame-font/
             screen.fill((127, 255, 147))
             TextSurf, TextRect = self.text(
@@ -313,6 +316,7 @@ class Raycaster:
                         self.start()
 
             # Referencia
+            # https://www.youtube.com/watch?v=eS5G5b3Ruvc
             # https://coderslegacy.com/python/pygame-font/
             screen.fill((100, 25, 40))
             TextSurf, TextRect = self.text(
