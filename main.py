@@ -27,30 +27,23 @@ void main()
 """
 
 fragment_shader = """
-#version 460
-layout(location = 0) out vec4 fragColor;
-in float intensity;
-in float intensity2;
-in vec2 vertexTexcoords;
-in vec3 lPosition;
-in vec4 fNormal;
-in float time;
-uniform sampler2D tex;
-uniform vec4 diffuse;
-uniform vec4 ambient;
-void main()
-{
-	vec3 color = vec3(0.0, 0.0, 0.0);
-	
-	if( abs(mod( abs(lPosition.x), abs(.2 * sin(time * 10.0) )   )) < .1){
-		color.x = 1.0;
-	}
-	
-	
-	if( abs(mod(lPosition.z, .2 * sin(time * 10.0 + 1.0))) < .1){
-		color.z = 1.0;
-	}
-	gl_FragColor = vec4(color, 1.0) * intensity2;
+layout(location = 0) in vec3 in_Position;
+layout(location = 1) in vec3 in_Normal;
+layout(location = 2) in vec2 in_TexCoord;
+
+layout(location = 0) uniform mat4 projection = mat4(1);
+layout(location = 4) uniform mat4 model_view = mat4(1);
+layout(location = 8) uniform mat4 normal_matrix = mat4(1);
+
+out vec3 color;
+out vec2 fragTexCoord;
+
+void main() {
+    gl_Position = projection * model_view * vec4(in_Position, 1.0);
+    vec3 normal = normalize((normal_matrix * vec4(in_Normal, 0)).xyz);
+    color = (normal + vec3(1,1,1)) * 0.5; // color by normal
+    fragTexCoord = in_TexCoord;
+    // color = vec3(in_TexCoord, 0.5); // color by texture coordinate
 }
 """
 
@@ -259,6 +252,8 @@ def calculateMatrix(angle, new_vec):
 
     projection = glm.perspective(glm.radians(45), 1600 / 1200, 0.1, 1000.0)
 
+    glViewport(0, 0, 1000, 800)
+
     amatrix = projection * view * model
 
     glUniformMatrix4fv(
@@ -266,30 +261,26 @@ def calculateMatrix(angle, new_vec):
     )
 
 
-glViewport(0, 0, 1000, 800)
-
 
 running = True
 
 glClearColor(0, 0, 0, 1.0)
 
-r = 0
-a = 0
+angle = 0
 new_vec = glm.vec3(0, 1, 0)
+prev_time = pygame.time.get_ticks()
 
 current_shader = shader
 while running:
-    r += 1
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     glUseProgram(current_shader)
 
-    glUniform1f(glGetUniformLocation(shader, "iTime"), r / 100)
+    glUniform1f(glGetUniformLocation(shader, "iTime"), angle / 1000)
 
     glDrawElements(GL_TRIANGLES, len(index_data), GL_UNSIGNED_INT, None)
 
-    calculateMatrix(a, new_vec)
+    calculateMatrix(angle, new_vec)
 
     pygame.display.flip()
 
@@ -303,15 +294,15 @@ while running:
                 current_shader = shader3
             if event.key == pygame.K_3:
                 current_shader = shader4
-            if event.key == pygame.K_UP:
+            if event.key == pygame.K_w:
                 new_vec = glm.vec3(1, 0, 0)
-                r += 1
-            if event.key == pygame.K_DOWN:
+                angle += 10
+            if event.key == pygame.K_s:
                 new_vec = glm.vec3(1, 0, 0)
-                r -= 1
-            if event.key == pygame.K_RIGHT:
+                angle -= 10
+            if event.key == pygame.K_d:
                 new_vec = glm.vec3(0, 1, 0)
-                r += 1
-            if event.key == pygame.K_LEFT:
+                angle += 10
+            if event.key == pygame.K_a:
                 new_vec = glm.vec3(0, 1, 0)
-                r -= 1
+                angle -= 10
