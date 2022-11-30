@@ -10,6 +10,7 @@ GROUND = (164, 160, 147, 255)
 # Inicializamos Pygame
 pygame.init()
 # Definimos tamaño de pantalla
+screen = pygame.display.set_mode((1000, 600), pygame.DOUBLEBUF | pygame.OPENGL)
 screen = pygame.display.set_mode((1000, 600))
 
 # Paredes del Juego
@@ -138,12 +139,16 @@ class Raycaster:
 
     def render(self):
         for i in range(0, 1000):
-            a = self.player["a"] - self.player["fov"] / 2 + (i * 0.00105)
-            d, m, tx = self.cast_ray(a)
-            x = i
-            h = (500 / (d * cos(a - self.player["a"]))) * 50
-            self.draw_stake(x, h, tx, textures[m])
-
+            try:
+                a = self.player["a"] - self.player["fov"] / 2 + (i * 0.00105)
+                d, m, tx = self.cast_ray(a)
+                x = i
+                h = (500 / (d * cos(a - self.player["a"]))) * 50
+                self.draw_stake(x, h, tx, textures[m])
+            except:
+                self.player["x"] = 70
+                self.player["y"] = 70
+                self.lost()
         # Dibujar enemigos
         for enemy in enemies:
             self.point(enemy["x"], enemy["y"], (0, 0, 0))
